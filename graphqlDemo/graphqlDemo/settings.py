@@ -123,5 +123,5 @@ STATIC_URL = '/static/'
 
 # third party 
 GRAPHENE = {
-    "SCHEMA": "ingredients.schema.schema",
+    "SCHEMA": "graphqlDemo.schema.schema",
 }

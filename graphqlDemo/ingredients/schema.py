@@ -1,5 +1,7 @@
 import graphene
+from graphene import relay, ObjectType
 from graphene_django import DjangoObjectType
+from graphene_django.filter import DjangoFilterConnectionField
 
 from ingredients.models import Category, Ingredient
 
@@ -14,10 +16,10 @@ class IngredientType(DjangoObjectType):
         fields = ("id", "name", "notes", "category")
 
 class Query(graphene.ObjectType):
-    all_ingredients = graphene.List(IngredientType)
+    my_ingredients = graphene.List(IngredientType)
     category_by_name = graphene.Field(CategoryType, name=graphene.String(required=True))
 
-    def resolve_all_ingredients(root, info):
+    def resolve_my_ingredients(root, info):
         return Ingredient.objects.select_related("category").all()
     
     def resolve_category_by_name(root, info, name):
@@ -27,3 +29,34 @@ class Query(graphene.ObjectType):
             return None
 
 schema = graphene.Schema(query=Query)
+
+#relay code begins here
+
+class CategoryNode(DjangoObjectType):
+    class Meta:
+        model = Category
+        filter_fields = ['name', 'ingredients']
+        interfaces = (relay.Node, )
+
+class IngredientNode(DjangoObjectType):
+    class Meta:
+        model = Ingredient
+        # some advanced filtering
+        filter_fields = {
+            'name': ['exact', 'icontains', 'istartswith'],
+            'notes': ['exact', 'icontains'],
+            'category': ['exact'],
+            'category__name': ['exact'],
+        }
+        interfaces = (relay.Node, )
+
+class RelayQuery(graphene.ObjectType):
+    category = relay.Node.Field(CategoryNode)
+    all_categories = DjangoFilterConnectionField(CategoryNode)
+
+    ingredient = relay.Node.Field(IngredientNode)
+    all_ingredients =DjangoFilterConnectionField(IngredientNode)
+
+
+class ParentQuery(Query, RelayQuery, ObjectType):
+    pass
